@@ -1,0 +1,19 @@
+# Backstage override configuration for your local development environment
+organization:
+  name: Upbound
+
+integrations:
+  github:
+    - host: github.com
+      token: ${GITHUB_TOKEN}
+
+catalog:
+  locations:
+    - type: file
+      target: template.yaml
+      rules:
+        - allow: [Template]
+    # - type: url
+    #   target: https://github.com/backstage/software-templates/blob/main/scaffolder-templates/react-ssr-template/template.yaml
+    #   rules:
+    #     - allow: [Template]

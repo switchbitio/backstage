@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ${{ values.name }}
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: ${{ values.repoUrl | replace(".git", "") }}
+    targetRevision: HEAD
+    path: cluster/charts/service
+    helm:
+      parameters:
+        - name: image.repository
+          value: donovanmuller/service
+        - name: image.tag
+          value: v0.0.0-5.gfb6ddc3
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: default
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false

@@ -1,0 +1,109 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+# some metadata about the template itself
+metadata:
+  name: upbound-go
+  title: Upbound Go template
+  description: Typical Go based service
+spec:
+  owner: guests
+  type: service
+
+  # these are the steps which are rendered in the frontend with the form input
+  parameters:
+    - title: Basic details
+      required:
+        - name
+        - description
+      properties:
+        name:
+          title: Name
+          type: string
+          description: Unique name of the service
+          ui:field: EntityNamePicker
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+          description: Help others understand what this service does
+    # - title: Choose a location
+    #   required:
+    #     - repoUrl
+    #   properties:
+    #     repoUrl:
+    #       title: Repository Location
+    #       type: string
+    #       ui:field: RepoUrlPicker
+    #       ui:options:
+    #         allowedHosts:
+    #           - github.com
+
+  # here's the steps that are executed in series in the scaffolder backend
+  steps:
+    - id: fetch-base
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: https://github.com/switchbitio/go-service-template/tree/main
+        targetPath: ${{ parameters.name }}
+        copyWithoutTemplating:
+          - .github/workflows/*
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+
+    - id: publish
+      name: Publish
+      action: publish:github
+      input:
+        allowedHosts: ['github.com']
+        repoVisibility: 'public'
+        defaultBranch: main
+        protectDefaultBranch: false
+        sourcePath: ${{ parameters.name }}
+        description: ${{ parameters.name }}
+        # repoUrl: ${{ parameters.repoUrl }}
+        repoUrl: github.com?repo=${{ parameters.name }}&owner=switchbitio
+
+    - id: log-message
+      name: Log Message
+      action: debug:log
+      input:
+        message: 'RemoteURL: ${{ steps.publish.output.remoteUrl }}, ${{ steps.publish.output.repoContentsUrl }}!'
+
+    # - id: trigger-ci
+    #   action: github:actions:dispatch
+    #   name: Trigger CI
+    #   input:
+    #     repoUrl: 'github.com?repo=${{ parameters.name }}&owner=switchbitio'
+    #     workflowId: 'ci.yaml'
+    #     branchOrTagName: 'main'
+    #     workflowInputs:
+    #       save-output: 'false'
+
+    - id: fetch-apps
+      name: Fetch Application template
+      action: fetch:template
+      input:
+        url: ./apps
+        targetPath: apps
+        values:
+          name: ${{ parameters.name }}
+          repoUrl: ${{ steps.publish.output.remoteUrl }}
+
+    - id: pull-request-apps
+      name: Create Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=backstage-demo&owner=Piotr1215
+        branchName: new-app-${{ parameters.name }}
+        title: "Add ${{ parameters.name }} application"
+        description: "Adding new ${{ parameters.name }} application"
+        sourcePath: ./apps
+        targetPath: ./apps
+
+    - id: register
+      name: Register
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
